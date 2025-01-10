@@ -10,8 +10,8 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:3000/api",
-        description: "Local server",
+        url: "https://patnerfox-api.redmatter.tech/api",
+        description: "Production",
       },
       {
         url: "http://localhost:4747/api",
