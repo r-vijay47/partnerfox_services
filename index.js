@@ -57,7 +57,7 @@ app.get('/', (req, res) => res.send('Hello World!'))
 
 mongoose.set('strictQuery', false);
 
-mongoose.connect('mongodb://localhost:27017/partnerfox', {
+mongoose.connect('mongodb+srv://vijay:5NtraJ5a85Ib1zzr@taskmanager.cnw2n.mongodb.net/cannan_space?retryWrites=true&w=majority', {
 
 })
   .then(() => {
