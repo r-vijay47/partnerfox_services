@@ -1,0 +1,72 @@
+const express = require('express')
+const app = express()
+const port = 3000
+const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+// To parse JSON bodies
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger");
+const authMiddleware = require("./middlewares/auth_middleware");
+
+// Swagger setup
+var options = {
+
+  customCss: '.swagger-ui .topbar { display: none }'
+};
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, options));
+app.use(express.json()); 
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+const branchRoutes = require('./routes/branch_routes');
+const userRoutes = require("./routes/user_route"); // Path to the user routes file
+
+const roles = require('./routes/roles_route')
+
+const leadRoutes = require("./routes/leads_routes");
+const moduleRoutes = require("./routes/modules_routes");
+const packageRoutes = require("./routes/package_routes");
+const quotationRoutes = require("./routes/quotation_routes");
+const paymentRoutes = require("./routes/payments_routes");
+const designerRoutes = require("./routes/designer_routes");
+const projectRoutes = require("./routes/project_route");
+const measuremeent_routes = require("./routes/measurement_routes");
+const bricks_routes = require("./routes/bricks_routes");
+
+//const measurementRoutes = require('./routes/measurment_routes/measurement_route');
+//const floorRoutes = require('./routes/measurment_routes/floorRoutes');
+
+app.use("/api", paymentRoutes);
+app.use("/api", quotationRoutes);
+app.use("/api", branchRoutes);
+app.use("/api", moduleRoutes);
+app.use("/api", packageRoutes);
+app.use("/api", leadRoutes);
+app.use("/api", designerRoutes);
+app.use("/api/", projectRoutes);
+app.use("/api/", measuremeent_routes);
+app.use("/api/", bricks_routes);
+//app.use("/api/", measurementRoutes);
+//app.use("/api/", floorRoutes);
+
+   app.use("/api", userRoutes);
+app.use('/api',roles)
+
+app.get('/', (req, res) => res.send('Hello World!'))
+
+mongoose.set('strictQuery', false);
+
+mongoose.connect('mongodb://localhost:27017/partnerfox', {
+
+})
+  .then(() => {
+    console.log('Connected to MongoDB successfully');
+    app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Swagger docs available at http://localhost:${port}/api-docs`);
+  })
+  .catch(error => {
+    console.error('Error connecting to MongoDB:', error);
+    process.exit(1); 
+ });
