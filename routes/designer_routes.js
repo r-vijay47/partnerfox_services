@@ -463,6 +463,63 @@ router.get('/designers/:id', async (req, res) => {
   }
 });
 
+
+/**
+ * @swagger
+ * /designer/{id}/client-confirmation:
+ *   put:
+ *     tags: [Designer]  
+ *     summary: Update client confirmation status (True/False)
+ *     description: Toggles the client confirmation status.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the designer project to confirm.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully updated client confirmation status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 designer:
+ *                   $ref: '#/components/schemas/Designer'
+ *       404:
+ *         description: Designer project not found
+ *       500:
+ *         description: Server error
+ */
+
+// API for client confirmation
+router.put('/designer/:id/client-confirmation', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the designer project by ID
+    const designer = await Designer.findById(id);
+    if (!designer) {
+      return res.status(404).json({ message: 'Designer project not found' });
+    }
+
+    // Toggle client confirmation
+    designer.clientconformation = !designer.clientconformation;
+    await designer.save();
+
+    return res.status(200).json({
+      message: `Client confirmation status updated to ${designer.clientconformation ? 'Confirmed' : 'Not Confirmed'}`,
+      designer,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
 // Swagger: Update Designer by ID
 /**
  * @swagger
@@ -542,6 +599,80 @@ router.delete('/designers/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /designer/{id}/status:
+ *   put:
+ *     tags: [Designer]
+ *     summary: Update the status of the designer project to "In Progress"
+ *     description: Only "Project Manager" or "SPM" can change the status of the project to "In Progress"
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the designer project to update.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["Initiated","Accepted", "Working", "InProgress", "Completed","Waitingforapproval","Waitingforfileuploads"]
+ *         description: Role to retrieve
+ *     responses:
+ *       200:
+ *         description: Successfully updated project status to "In Progress"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 designer:
+ *                   $ref: '#/components/schemas/Designer'
+ *       400:
+ *         description: Invalid status change (status already "InProgress")
+ *       403:
+ *         description: Unauthorized role (only "ProjectManager" or "SPM")
+ *       404:
+ *         description: Designer project not found
+ *       500:
+ *         description: Server error
+ */
+// API to change project status to "In Progress"
+router.put('/designer/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.query;
+
+    // Validate the status change request
+    // if (status !== 'InProgress') {
+    //   return res.status(400).json({ message: 'Only "InProgress" status change is allowed here' });
+    // }
+
+    // Find the designer project by ID
+    const designer = await Designer.findById(id).populate('project');
+    if (!designer) {
+      return res.status(404).json({ message: 'Designer project not found' });
+    }
+
+    // Check if the status is already "InProgress"
+    // if (designer.status === 'InProgress') {
+    //   return res.status(400).json({ message: 'Project is already in progress' });
+    // }
+
+    // Update project status
+    designer.status = status;
+    await designer.save();
+
+    return res.status(200).json({ message: 'Project status updated to InProgress', designer });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // File upload endpoint
 /**

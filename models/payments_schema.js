@@ -37,6 +37,9 @@ const paymentSchema = new mongoose.Schema(
     notes: {
       type: String, // Optional notes about the payment
     },
+    invoice_url: {
+      type: String, // Optional notes about the payment
+    },
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt fields
 );

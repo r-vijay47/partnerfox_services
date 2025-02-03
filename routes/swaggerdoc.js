@@ -310,6 +310,10 @@
  *           type: string
  *           description: Additional notes about the payment
  *           example: "Partial payment for quotation #123"
+ *         invoice_url:
+ *           type: string
+ *           description: Additional invoce url
+ *           example: "Http://localhost:3000/uploads/invoice.pdf"
  *       example:
  *         user: "63fb1f2f5dff5c4b9d4a67a9"
  *         lead: "63fb1f2f5dff5c4b9d4a67b2"

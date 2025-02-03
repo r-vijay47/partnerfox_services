@@ -175,17 +175,17 @@ app.post('/measurements', async (req, res) => {
 })
          });
 
-
+         var bricks =await Bricks.findOne();
+         console.log(bricks);
          summary["sqft"]=sqft;
             
          volume["length"] = walllenght/1000;
          volume["depth"] = wallheight/1000;
-         volume["wallthickness"] = 100/1000;
+         volume["wallthickness"] =  bricks.dimensions.thickness/1000;
           var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
 
 
-          var bricks =await Bricks.findOne();
-          console.log(bricks);
+      
           var brickss  = {};
 
           console.log(brickss);

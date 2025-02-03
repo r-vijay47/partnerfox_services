@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
+const path = require('path');
 const User = require('../models/project_schema')
 const Project = require('../models/project_schema')
 const Payment = require("../models/payments_schema");
@@ -38,28 +41,89 @@ const mongoose = require("mongoose");
  */
 router.post("/payments", async (req, res) => {
   try {
+    // Create a new Payment object from request body
     const payment = new Payment(req.body);
 
-    const project = await Project.findOne({lead:req.body.lead});
-    console.log("project");
-    console.log(project);
-    const spm = await User.find({"roles._id":new  mongoose.Types.ObjectId("673d8e54c2549fb2e43969d6")});
-    console.log("SPM");
-    console.log(spm);
+    // Retrieve project and SPM details
+    const project = await Project.findOne({ lead: req.body.lead });
+    const spm = await User.find({ "roles._id": new mongoose.Types.ObjectId("673d8e54c2549fb2e43969d6") });
 
-    if(project){
-      console.log(" Project Exists");
-      console.log(project);
-    }else{
-     
-      const createProject = new Project({spm:[spm._id],quotation:req.body.quotation,status:"Initiated",lead:req.body.lead,client:req.body.user});
-     const savedproject = await createProject.save();
-     console.log(savedproject);
+    // If the project doesn't exist, create a new one
+    if (!project) {
+      const createProject = new Project({
+        spm: [spm._id],
+        quotation: req.body.quotation,
+        status: "Initiated",
 
+        lead: req.body.lead,
+        client: req.body.user
+      });
+      await createProject.save();
     }
+
+    // Save the payment first
     const savedPayment = await payment.save();
-    res.status(201).json(savedPayment);
+
+    // Generate PDF Invoice
+    const doc = new PDFDocument();
+   // const invoiceFilename = `Invoice_${savedPayment._id}.pdf`;
+ 
+    // Dynamically set the path for the invoice folder based on the project root
+    const projectRoot = path.resolve(__dirname, '../');  // Move up two levels to get to the project root
+    const invoicesFolder = path.join(projectRoot, 'invoices'); // Reference the 'invoices' folder
+
+    // Ensure that the 'invoices' folder exists
+    if (!fs.existsSync(invoicesFolder)) {
+      fs.mkdirSync(invoicesFolder, { recursive: true });  // Create the folder if it doesn't exist
+    }
+
+    const invoiceFilename = `Invoice_${savedPayment._id}.pdf`;
+    const invoicePath = path.join(invoicesFolder, invoiceFilename); // Set the full path to the invoice file
+
+    // Pipe the PDF into a file
+    doc.pipe(fs.createWriteStream(invoicePath));
+
+    // Add content to the PDF
+    doc.fontSize(20).text('Invoice', { align: 'center' });
+
+    doc.fontSize(12).text(`Payment ID: ${savedPayment._id}`, 100, 100);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 100, 120);
+    doc.text(`Client: ${req.body.user}`, 100, 140);
+    doc.text(`Lead: ${req.body.lead}`, 100, 160);
+    doc.text(`Amount: ${req.body.amount}`, 100, 180);
+    doc.text(`Quotation ID: ${req.body.quotation}`, 100, 200);
+
+    doc.end();
+    console.log(invoicePath);
+    try {
+   
+      // Set the URL path to access the generated invoice
+     // const invoiceUrl = `../invoices/${invoiceFilename}`;
+      const invoiceUrl = `../invoices/${invoiceFilename}`;
+      
+      // Update the payment document with the generated invoice URL
+      savedPayment.invoice_url = invoiceUrl;
+      
+      // Save the updated payment document with the invoice URL
+      await savedPayment.save();
+      
+      // Send the response back to the user with the generated invoice URL
+      res.status(201).json({
+        message: 'Payment created successfully and invoice generated.',
+        invoiceUrl: invoiceUrl,  // URL to download the invoice
+        payment: savedPayment
+      });
+    } catch (error) {
+      console.error('Error updating payment with invoice URL:', error);
+      res.status(500).json({ error: 'Failed to update payment with invoice URL' });
+    }
+    // After the file is created, update the payment document with the URL of the generated invoice
+    // doc.on('finish', async () => {
+    //   console.log('PDF generation completed.');
+ 
+    // });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });

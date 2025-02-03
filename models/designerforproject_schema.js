@@ -41,7 +41,7 @@ const DesignerSchema = new mongoose.Schema({
 
   designer: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // User who created the project
+    ref: "vendors", // User who created the project
   },],
   // lead: {
   //   type: mongoose.Schema.Types.ObjectId,

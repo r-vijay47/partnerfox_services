@@ -180,7 +180,13 @@ const MeasurementSchema = new mongoose.Schema({
     required: true,
     default: 'cm'
   },
-  floors: [FloorSchema]
+  floors: [FloorSchema],
+  status: {
+    type: String,
+    enum: ["Initiated","Accepted", "Working", "InProgress", "Completed","Waitingforapproval","Waitingforfileuploads"], 
+    default: "Initiated",// Example sources
+    required: true,
+  },
 }, {
   timestamps: true
 });
