@@ -1,4 +1,5 @@
 const VendorsSchema = require('../models/vendor_schema'); // assuming this is in a `models` folder
+const Vendors = require('../models/vendor_schema'); // assuming this is in a `models` folder
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -6,67 +7,217 @@ const nodemailer = require('nodemailer');
 const express = require('express');
 const router = express.Router();
 const JWT_SECRET = "KrisHna@547"
+
 /**
  * @swagger
- * tags:
- *   name: Vendors
- *   description: CRUD operations for managing vendors
+ * components:
+ *   schemas:
+ *     Vendor:
+ *       type: object
+ *       properties:
+ *         Vendorname:
+ *           type: string
+ *         typeofvendor:
+ *           type: array
+ *           items:
+ *             type: string
+ *         pricing:
+ *           type: object
+ *           properties:
+ *             unitOfMeasurement:
+ *               type: string
+ *             pricePerUnit:
+ *               type: number
+ *             cost:
+ *               type: number
+ *             gstPercentage:
+ *               type: number
+ *             gstAmount:
+ *               type: number
+ *             totalAmountPerUnit:
+ *               type: number
+ *             totalAmountPerQty:
+ *               type: number
+ *             quantity:
+ *               type: number
+ *         roles:
+ *           type: array
+ *           items:
+ *             type: string
+ *         vendorcategory:
+ *           type: array
+ *           items:
+ *             type: string
+ *         vendorteamsize:
+ *           type: string
+ *         bankaccountnumber:
+ *           type: string
+ *         bankaccountname:
+ *           type: string
+ *         bankaccountifsc:
+ *           type: string
+ *         mobile:
+ *           type: number
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
+ *         upiid:
+ *           type: string
+ *         isActive:
+ *           type: boolean
+ *         url:
+ *           type: string
  */
 
-
-// Create Vendor
-createVendor = async (req, res) => {
+/**
+ * @swagger
+ * /vendors:
+ *   post:
+ *     summary: Create a new vendor
+ *     tags: [Vendors]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Vendor'
+ *     responses:
+ *       201:
+ *         description: Vendor created successfully
+ */
+router.post('/vendors', async (req, res) => {
   try {
-    const vendor = new VendorsSchema(req.body);
-    const savedVendor = await vendor.save();
-    return res.status(201).json(savedVendor);
+    const newVendor = new Vendors(req.body);
+    await newVendor.save();
+    res.status(201).json(newVendor);
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
-};
+});
 
-// Get All Vendors
-getAllVendors = async (req, res) => {
+/**
+ * @swagger
+ * /vendors/{id}:
+ *   get:
+ *     summary: Get a vendor by ID
+ *     tags: [Vendors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Vendor ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor found
+ *       404:
+ *         description: Vendor not found
+ */
+router.get('/vendors/:id', async (req, res) => {
   try {
-    const vendors = await VendorsSchema.find();
-    return res.status(200).json(vendors);
+    const vendor = await Vendors.findById(req.params.id).populate('typeofvendor roles vendorcategory');
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    res.json(vendor);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
-};
+});
 
-// Get Vendor by ID
-getVendorById = async (req, res) => {
+/**
+ * @swagger
+ * /vendors:
+ *   get:
+ *     summary: Get a vendor by ID
+ *     tags: [Vendors]
+ *     responses:
+ *       200:
+ *         description: Vendor found
+ *       404:
+ *         description: Vendor not found
+ */
+router.get('/vendors', async (req, res) => {
   try {
-    const vendor = await VendorsSchema.findById(req.params.id).populate('typeofvendor vendorcategory');
-    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
-    return res.status(200).json(vendor);
+    const vendor = await Vendors.find().populate('typeofvendor roles vendorcategory');
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    res.json(vendor);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
-};
+});
 
-// Update Vendor
-updateVendor = async (req, res) => {
+/**
+ * @swagger
+ * /vendors/{id}:
+ *   put:
+ *     summary: Update a vendor by ID
+ *     tags: [Vendors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Vendor ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Vendor'
+ *     responses:
+ *       200:
+ *         description: Vendor updated successfully
+ *       404:
+ *         description: Vendor not found
+ */
+router.put('/vendors/:id', async (req, res) => {
   try {
-    const updatedVendor = await VendorsSchema.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedVendor) return res.status(404).json({ message: "Vendor not found" });
-    return res.status(200).json(updatedVendor);
+    const updatedVendor = await Vendors.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedVendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    res.json(updatedVendor);
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
-};
+});
 
-// Delete Vendor
-deleteVendor = async (req, res) => {
+/**
+ * @swagger
+ * /vendors/{id}:
+ *   delete:
+ *     summary: Delete a vendor by ID
+ *     tags: [Vendors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Vendor ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor deleted successfully
+ *       404:
+ *         description: Vendor not found
+ */
+router.delete('/vendors/:id', async (req, res) => {
   try {
-    const deletedVendor = await VendorsSchema.findByIdAndDelete(req.params.id);
-    if (!deletedVendor) return res.status(404).json({ message: "Vendor not found" });
-    return res.status(200).json({ message: "Vendor deleted successfully" });
+    const deletedVendor = await Vendors.findByIdAndDelete(req.params.id);
+    if (!deletedVendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    res.json({ message: 'Vendor deleted successfully' });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
-};
+});
 
 
 
@@ -183,219 +334,17 @@ approveVendor = async (req, res) => {
   };
 
 
-/**
- * @swagger
- * /vendors:
- *   post:
- *     summary: Create a new Vendor
- *     tags: [Vendors]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - Vendorname
- *               - email
- *               - password
- *             properties:
- *               Vendorname:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               typeofvendor:
- *                 type: array
- *                 items:
- *                   type: string
- *               roles:
- *                 type: array
- *                 items:
- *                   type: string
- *               vendorcategory:
- *                 type: array
- *                 items:
- *                   type: string
- *               vendorteamsize:
- *                 type: string
- *               bankaccountnumber:
- *                 type: string
- *               bankaccountname:
- *                 type: string
- *               bankaccountifsc:
- *                 type: string
- *               mobile:
- *                 type: integer
- *               upiid:
- *                 type: string
- *               isActive:
- *                 type: boolean
- *               url:
- *                 type: string
- *     responses:
- *       201:
- *         description: Vendor created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 Vendorname:
- *                   type: string
- *                 email:
- *                   type: string
- *                 isActive:
- *                   type: boolean
- *       400:
- *         description: Invalid input data
- */
-  // CRUD operations
-  router.post('/vendors', createVendor);
-  /**
- * @swagger
- * /vendors:
- *   get:
- *     summary: Get all vendors
- *     tags: [Vendors]
- *     responses:
- *       200:
- *         description: List of all vendors
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   Vendorname:
- *                     type: string
- *                   email:
- *                     type: string
- *                   isActive:
- *                     type: boolean
- */
-  router.get('/vendors', getAllVendors);
+//  router.post('/vendors', createVendor);
 
-/**
- * @swagger
- * /vendors/{id}:
- *   get:
- *     summary: Get a specific vendor by ID
- *     tags: [Vendors]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: Vendor ID
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Vendor details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 Vendorname:
- *                   type: string
- *                 email:
- *                   type: string
- *                 isActive:
- *                   type: boolean
- *       404:
- *         description: Vendor not found
- */
+//   router.get('/vendors', getAllVendors);
 
-  router.get('/vendors/:id', getVendorById);
 
-/**
- * @swagger
- * /vendors/{id}:
- *   put:
- *     summary: Update vendor information
- *     tags: [Vendors]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: Vendor ID
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               Vendorname:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               typeofvendor:
- *                 type: array
- *                 items:
- *                   type: string
- *               roles:
- *                 type: array
- *                 items:
- *                   type: string
- *               vendorcategory:
- *                 type: array
- *                 items:
- *                   type: string
- *               vendorteamsize:
- *                 type: string
- *               bankaccountnumber:
- *                 type: string
- *               bankaccountname:
- *                 type: string
- *               bankaccountifsc:
- *                 type: string
- *               mobile:
- *                 type: integer
- *               upiid:
- *                 type: string
- *               isActive:
- *                 type: boolean
- *               url:
- *                 type: string
- *     responses:
- *       200:
- *         description: Vendor updated successfully
- *       400:
- *         description: Invalid input data
- *       404:
- *         description: Vendor not found
- */
+//   router.get('/vendors/:id', getVendorById);
 
-  router.put('/vendors/:id', updateVendor);
-  /**
- * @swagger
- * /vendors/{id}:
- *   delete:
- *     summary: Delete a vendor
- *     tags: [Vendors]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: Vendor ID
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Vendor deleted successfully
- *       404:
- *         description: Vendor not found
- */
 
-  router.delete('/vendors/:id', deleteVendor);
+//   router.put('/vendors/:id', updateVendor);
+ 
+//   router.delete('/vendors/:id', deleteVendor);
   
 
 /**

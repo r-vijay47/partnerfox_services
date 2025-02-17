@@ -1,16 +1,257 @@
 const express = require('express');
 
- const Measurement = require('../models/designerforproject_schema');
+ const Measurement = require('../models/desiginer_measurement_schema');
 //const Measurements = require('../models/measurments/measurements_schema');
 const Bricks = require('../models/bricks_schema');
+const vendor = require('../models/vendor_schema')
 const app = express();
 app.use(express.json());
-
 
 /**
  * @swagger
  * tags:
- *   - name: DesiginerMeasurements
+ *   - name: Estimation 
+ *     description: API for Estimation for vendor
+ */
+  /**
+   * @swagger
+   * /estimation/{id}:
+   *   get:
+   *     summary: Get a measurement by ID
+   *     tags: [Estimation ]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: objectId
+   *         description: The measurement ID
+   *     responses:
+   *       200:
+   *         description: Measurement record found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Measurements'
+   *       404:
+   *         description: Measurement not found
+   */
+  app.get('/estimation/:id', async (req, res) => {
+    try {
+      const measurement = await Measurement.findById(req.params.id);
+      if (!measurement) return res.status(404).json({ message: 'Measurement not found' });
+      else{
+         var summary ={};
+
+         var volume = {};
+
+         var walllenght = 0;
+         var wallheight = 0;  
+         var motormix ={
+          cement : 1,
+          sand:4,
+          Dust:0
+         };
+
+
+
+         
+
+         summary["totalfloors"]=measurement.floors.length;
+         summary["unit"]=measurement.unit;
+       //  console.log(measurement.floors[0].rooms[0].walls[0].length);
+        // console.log(measurement.floors[0].rooms[0].walls[0].height);
+
+         var sqft = 0;
+
+         var motormixtotal = motormix.cement+motormix.sand+motormix.Dust; 
+         motormix.motormixtotal = motormixtotal;
+         
+       //  sqft = ((measurement.floors[0].rooms[0].walls[0].length/304.8)*(measurement.floors[0].rooms[0].walls[0].height/304.8));
+
+     //  console.log(measurement.floors.length);  
+      
+
+
+
+
+
+         measurement.floors.forEach(floors => {
+         
+         
+          ///   console.log(floors.rooms);
+
+          floors.rooms.forEach(rooms => {
+
+  rooms.walls.forEach(walls => {
+    sqft = sqft + ((walls.length/304.8)*(walls.height/304.8));
+    walllenght = walllenght + walls.length;
+    wallheight = wallheight + walls.height;
+  
+  
+    walls.windows.forEach(windows => {
+    //  console.log(sqft);
+    //  console.log(windows.width);
+   //   console.log(windows.height);
+   //   console.log((windows.width/304.8)*(windows.height/304.8));
+      sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
+
+    })
+    walls.doors.forEach(doors => {
+     sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
+
+    })
+
+   // console.log(   walls);
+
+   walls.lintels.forEach(lintel => {
+     console.log(lintel);
+     sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
+
+   })
+
+
+
+  });
+})
+         });
+
+
+         summary["sqft"]=sqft;
+            
+         volume["length"] = walllenght/1000;
+         volume["depth"] = wallheight/1000;
+         volume["wallthickness"] = 100/1000;
+          var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
+
+
+          var bricks =await Bricks.findOne();
+          console.log(bricks);
+          var brickss  = {};
+
+          console.log(brickss);
+          brickss.length = (bricks.dimensions.length/1000);
+          brickss.width = bricks.dimensions.width/1000;
+          brickss.thickness = bricks.dimensions.thickness/1000;
+          brickss.brickvolume = ((bricks.dimensions.length/1000 )* (bricks.dimensions.width/1000) *( bricks.dimensions.thickness/1000));
+          console.log(brickss);
+
+
+          var motor = {};
+
+
+          motor.length =   brickss.length+0.01;
+          motor.width =   brickss.width+0.01;
+          motor.thickness =   brickss.thickness+0.01;
+          motor.motorvolume =  (motor.length * motor.width * motor.thickness);  
+          var nofbricks = m3/ motor.motorvolume;
+            var wastage = nofbricks * 0.08;
+            var quantityofbricks = nofbricks + wastage;
+            var volumeofbrickmotor = nofbricks *   brickss.brickvolume;
+
+            var motorqty={};
+            motorqty. mototequantity = m3 - volumeofbrickmotor;
+            motorqty. wastage =  motorqty. mototequantity * 0.15;
+            motorqty. totalmotorqunty =  motorqty. mototequantity +      motorqty. wastage;
+            motorqty. dryvolume =    motorqty. totalmotorqunty  * 0.25;
+            motorqty. finalmotorquantity =         motorqty. totalmotorqunty +  motorqty. dryvolume;
+
+
+
+            var cement ={};
+
+
+
+
+            cement.amountofcement =(  motormix.cement /      motormix.motormixtotal) * motorqty.finalmotorquantity;
+            cement.cementdensity =cement.amountofcement *1440;
+            cement.umberofcementbags =     cement.cementdensity /50;
+         
+            var sand ={};
+
+
+            sand.amountofsand =(  motormix.sand /      motormix.motormixtotal) * motorqty.finalmotorquantity;
+            sand.sanddensity =sand.amountofsand *1500;
+            sand.numberoftonssand =         sand.sanddensity  /1000;
+         
+       
+            const vendors =await vendor.find({vendorcategory:{$in:['67a452a4f0a2b53ca932a8e3','67a452c5f0a2b53ca932a8e9','67a452cff0a2b53ca932a8eb']}}).populate('vendorcategory typeofvendor roles')
+       
+            var vendorestimation = [];
+            
+            vendors.forEach((element)=>{
+var vendor ={};
+
+vendor.name = element.Vendorname;
+vendor.email = element.email;
+vendor.price = [];
+
+              element.vendorcategory.forEach((vendorcategory)=>{
+
+                if(vendorcategory.type=="Bricks"){
+
+                  var price ={}
+
+                  price.name =   vendorcategory.type
+                  price.nofbricks =   nofbricks
+                  price.pricing =  element.pricing.totalAmountPerUnit
+                price.price =     nofbricks * element.pricing.totalAmountPerUnit
+                  vendor.price.push(price)
+
+
+                }
+
+                if(vendorcategory.type=="Sand"){
+
+                  var price ={}
+
+                  price.name =   vendorcategory.type
+                  price.numberoftonssand =    sand.numberoftonssand 
+                  price.pricing =    element.pricing.totalAmountPerUnit
+                price.price =     sand.numberoftonssand * element.pricing.totalAmountPerUnit
+                  vendor.price.push(price)
+
+
+                }
+
+
+                if(vendorcategory.type=="Cement"){
+
+                  var price ={}
+
+                  price.name =   vendorcategory.type
+                  price.numberofcementbags =   cement.umberofcementbags
+                  price.pricing =    element.pricing.totalAmountPerUnit
+                   price.price =     cement.umberofcementbags * element.pricing.totalAmountPerUnit
+                  vendor.price.push(price)
+
+
+                }
+
+              })
+              vendorestimation.push(vendor)
+            })
+
+
+
+            res.status(200).json({vendorestimation,summary,motormix,volume,m3,motor,brickss,nofbricks,wastage,quantityofbricks,volumeofbrickmotor,motorqty,volumeofbrickmotor,cement,sand,walllenght,wallheight,vendors});
+
+      }
+
+
+
+  
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+     
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Architect Measurements
  *     description: API for managing project measurements
  */
 
@@ -19,7 +260,7 @@ app.use(express.json());
  * /designinermeasurements:
  *   post:
  *     summary: Create a new measurement record
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     requestBody:
  *       required: true
  *       content:
@@ -48,7 +289,7 @@ app.post('/designinermeasurements', async (req, res) => {
    *  /ddesigninermeasurements:
    *   get:
    *     summary: Get all measurements
-   *     tags: [DesiginerMeasurements]
+   *     tags: [Architect Measurements]
    *     responses:
    *       200:
    *         description: List of all measurements
@@ -76,7 +317,7 @@ app.post('/designinermeasurements', async (req, res) => {
    * /designinermeasurements/{id}:
    *   get:
    *     summary: Get a measurement by ID
-   *     tags: [DesiginerMeasurements]
+   *     tags: [Architect Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -252,7 +493,7 @@ app.post('/designinermeasurements', async (req, res) => {
    * /designinermeasurements/{id}:
    *   put:
    *     summary: Update a measurement by ID
-   *     tags: [DesiginerMeasurements]
+   *     tags: [Architect Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -290,7 +531,7 @@ app.post('/designinermeasurements', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors:
  *   post:
  *     summary: Add a floor to a measurement by measurementId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -334,7 +575,7 @@ app.post('/designinermeasurements/:measurementId/floors', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors:
  *   get:
  *     summary: Get all floors of a measurement by measurementId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -366,7 +607,7 @@ app.get('/designinermeasurements/:measurementId/floors', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors/{floorId}:
  *   put:
  *     summary: Update a floor in a measurement by measurementId and floorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -419,7 +660,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId', async (req, re
  * /designinermeasurements/{measurementId}/floors/{floorId}:
  *   delete:
  *     summary: Delete a floor from a measurement by measurementId and floorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -465,7 +706,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId', async (req,
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms:
  *   post:
  *     summary: Add a room to a floor under a measurement by measurementId and floorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -519,7 +760,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms', async (
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms:
  *   get:
  *     summary: Get all rooms in a floor of a measurement by measurementId and floorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -563,7 +804,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms', async (r
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}:
  *   put:
  *     summary: Update a room in a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -627,7 +868,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId', 
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}:
  *   delete:
  *     summary: Delete a room from a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -683,7 +924,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls:
  *   post:
  *     summary: Add a wall to a room in a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -747,7 +988,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls:
  *   get:
  *     summary: Get all walls in a room of a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -798,7 +1039,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}:
  *   put:
  *     summary: Update a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -871,7 +1112,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}:
  *   delete:
  *     summary: Delete a wall from a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -937,7 +1178,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   post:
  *     summary: Add a customization to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1011,7 +1252,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   get:
  *     summary: Get all customizations for a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1072,7 +1313,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   get:
  *     summary: Get all customizations for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1134,7 +1375,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations/{customizationId}:
  *   put:
  *     summary: Update a wall customization by measurementId, floorId, roomId, wallId, and customizationId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1216,7 +1457,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations/{customizationId}:
  *   delete:
  *     summary: Delete a wall customization by measurementId, floorId, roomId, wallId, and customizationId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1293,7 +1534,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
    * /designinermeasurements/{id}:
    *   delete:
    *     summary: Delete a measurement by ID
-   *     tags: [DesiginerMeasurements]
+   *     tags: [Architect Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -1325,7 +1566,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows:
  *   get:
  *     summary: Get all windows for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1386,7 +1627,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows:
  *   post:
  *     summary: Add a window to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1460,7 +1701,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows/{windowId}:
  *   put:
  *     summary: Update a window in a wall under a room and floor by measurementId, floorId, roomId, wallId, and windowId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1541,7 +1782,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows/{windowId}:
  *   delete:
  *     summary: Delete a window from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and windowId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1616,7 +1857,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors:
  *   get:
  *     summary: Get all doors for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1677,7 +1918,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors:
  *   post:
  *     summary: Add a door to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1752,7 +1993,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors/{doorId}:
  *   put:
  *     summary: Update a door in a wall under a room and floor by measurementId, floorId, roomId, wallId, and doorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1834,7 +2075,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors/{doorId}:
  *   delete:
  *     summary: Delete a door from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and doorId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1911,7 +2152,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels:
  *   get:
  *     summary: Get all lintels for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1973,7 +2214,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels:
  *   post:
  *     summary: Add a lintel to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2048,7 +2289,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels/{lintelId}:
  *   put:
  *     summary: Update a lintel in a wall under a room and floor by measurementId, floorId, roomId, wallId, and lintelId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2130,7 +2371,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels/{lintelId}:
  *   delete:
  *     summary: Delete a lintel from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and lintelId
- *     tags: [DesiginerMeasurements]
+ *     tags: [Architect Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId

@@ -36,6 +36,7 @@ const desiginermeasuremeent_routes = require("./routes/desiginer_measurement_rou
 const bricks_routes = require("./routes/bricks_routes");
 const verndortypes_routes = require("./routes/vendortypes_route");
 const verndor_routes = require("./routes/vendor_route");
+const verndor_category = require("./routes/vendor_category");
 
 //const measurementRoutes = require('./routes/measurment_routes/measurement_route');
 //const floorRoutes = require('./routes/measurment_routes/floorRoutes');
@@ -53,6 +54,7 @@ app.use("/api/", desiginermeasuremeent_routes);
 app.use("/api/", bricks_routes);
 app.use("/api", verndortypes_routes);
 app.use("/api", verndor_routes);
+app.use("/api", verndor_category);
 //app.use("/api/", measurementRoutes);
 //app.use("/api/", floorRoutes);
 
