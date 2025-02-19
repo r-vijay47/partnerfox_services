@@ -5,6 +5,34 @@ const express = require('express');
 const Bricks = require('../models/bricks_schema');
 const app = express();
 app.use(express.json());
+function checkIfScientific(num) {
+  // Check if the number is in scientific notation
+  if (num.toString().includes('e')) {
+      // Return the number in fixed-point notation (with a specific number of decimals, for example 10 decimals)
+      return num.toFixed(10);
+  }
+  // If it's not in scientific notation, just return the number as it is
+  return num;
+}
+
+const convertUnits = (value, fromUnit, toUnit) => {
+  const conversionRates = {
+    cm: { cm: 1, mm: 10, inches: 0.393701, feet: 0.0328084, yard: 0.0109361, meter: 0.01, kilometer: 0.00001 },
+    mm: { cm: 0.1, mm: 1, inches: 0.0393701, feet: 0.00328084, yard: 0.00109361, meter: 0.001, kilometer: 0.000001 },
+    inches: { cm: 2.54, mm: 25.4, inches: 1, feet: 0.0833333, yard: 0.0277778, meter: 0.0254, kilometer: 0.0000254 },
+    feet: { cm: 30.48, mm: 304.8, inches: 12, feet: 1, yard: 0.333333, meter: 0.3048, kilometer: 0.0003048 },
+    yard: { cm: 91.44, mm: 914.4, inches: 36, feet: 3, yard: 1, meter: 0.9144, kilometer: 0.0009144 },
+    meter: { cm: 100, mm: 1000, inches: 39.3701, feet: 3.28084, yard: 1.09361, meter: 1, kilometer: 0.001 },
+    kilometer: { cm: 100000, mm: 1000000, inches: 39370.1, feet: 3280.84, yard: 1093.61, meter: 1000, kilometer: 1 }
+  };
+
+  if (!conversionRates[fromUnit] || !conversionRates[toUnit]) {
+    throw new Error('Invalid units');
+  }
+
+  return value * conversionRates[fromUnit][toUnit];
+};
+
 
 
 /**
@@ -42,6 +70,59 @@ app.post('/measurements', async (req, res) => {
     }
   });
   
+
+  /**
+   * @swagger
+   * /measurements/conversion:
+   *   post:
+   *     summary: Convert a measurement value from one unit to another
+   *     tags: [Measurements]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               value:
+   *                 type: number
+   *               fromUnit:
+   *                 type: string
+   *                 enum: [cm, mm, inches, feet, yard]
+   *               toUnit:
+   *                 type: string
+   *                 enum: [cm, mm, inches, feet, yard]
+   *             required:
+   *               - value
+   *               - fromUnit
+   *               - toUnit
+   *     responses:
+   *       200:
+   *         description: Conversion successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: number
+   *       400:
+   *         description: Bad request
+   */
+
+  app.post('/measurements/conversion', async (req, res) => {
+
+    try {
+      const { value, fromUnit, toUnit } = req.body;
+      const result = convertUnits(value, fromUnit, toUnit);
+      res.status(200).json({ result });
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
+  })
+
+
+
 
   /**
    * @swagger
@@ -106,6 +187,7 @@ app.post('/measurements', async (req, res) => {
 
          var walllenght = 0;
          var wallheight = 0;  
+                 var wallthickness = 0;  
          var motormix ={
           cement : 1,
           sand:4,
@@ -135,66 +217,78 @@ app.post('/measurements', async (req, res) => {
 
 
 
-         measurement.floors.forEach(floors => {
+     measurement.floors.forEach(floors => {
          
          
-          ///   console.log(floors.rooms);
-
-          floors.rooms.forEach(rooms => {
-
-  rooms.walls.forEach(walls => {
-    sqft = sqft + ((walls.length/304.8)*(walls.height/304.8));
-    walllenght = walllenght + walls.length;
-    wallheight = wallheight + walls.height;
-  
-  
-    walls.windows.forEach(windows => {
-    //  console.log(sqft);
-    //  console.log(windows.width);
-   //   console.log(windows.height);
-   //   console.log((windows.width/304.8)*(windows.height/304.8));
-      sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
-
-    })
-    walls.doors.forEach(doors => {
-     sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
-
-    })
-
-   // console.log(   walls);
-
-   walls.lintels.forEach(lintel => {
-     console.log(lintel);
-     sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
-
-   })
 
 
+      floors.rooms.forEach(rooms => {
 
-  });
+rooms.walls.forEach(walls => {
+console.log(walls.unit);
+sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/304.8)*(convertUnits(walls.height,walls.unit,measurement.unit)/304.8));
+
+//  console.log(sqft);
+walllenght = walllenght + walls.length;
+wallheight = wallheight + walls.height;
+wallthickness = wallthickness +walls.wallType.thickness;
+
+
+walls.windows.forEach(windows => {
+//  console.log(sqft);
+//  console.log(windows.width);
+//   console.log(windows.height);
+//   console.log((windows.width/304.8)*(windows.height/304.8));
+
+sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/304.8)*(convertUnits(windows.height,windows.unit,measurement.unit)/304.8));
+// sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
+
+// console.log("aftert windows "+sqft);
 })
-         });
+walls.doors.forEach(doors => {
+ 
+ sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/304.8)*(convertUnits(doors.height,doors.unit,measurement.unit)/304.8));
+//  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
+//  console.log("aftert doors "+sqft);
+})
 
-         var bricks =await Bricks.findOne();
-         console.log(bricks);
-         summary["sqft"]=sqft;
+// console.log(   walls);
+
+walls.lintels.forEach(lintel => {
+
+  sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/304.8)*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/304.8));
+//  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
+//console.log("aftert lintels "+sqft);
+})
+
+
+
+});
+})
+     });
+
+
+     summary["sqft"]=sqft;
             
-         volume["length"] = walllenght/1000;
-         volume["depth"] = wallheight/1000;
-         volume["wallthickness"] =  bricks.dimensions.thickness/1000;
-          var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
+     volume["length"] = walllenght/1000;
+     volume["depth"] = wallheight/1000;
+     volume["wallthickness"] = wallthickness/1000;
+      var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
 
 
-      
-          var brickss  = {};
+      var bricks =await Bricks.findOne();
 
-          console.log(brickss);
-          brickss.length = (bricks.dimensions.length/1000);
-          brickss.width = bricks.dimensions.width/1000;
-          brickss.thickness = bricks.dimensions.thickness/1000;
-          brickss.brickvolume = ((bricks.dimensions.length/1000 )* (bricks.dimensions.width/1000) *( bricks.dimensions.thickness/1000));
-          console.log(brickss);
+      var brickss  = {};
 
+   
+   //   console.log(bricks)
+      console.log( convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit))
+      brickss.length = (convertUnits(bricks.dimensions.length,bricks.unit,measurement.unit)/1000);
+      brickss.width = convertUnits(bricks.dimensions.width,bricks.unit,measurement.unit)/1000;
+      brickss.thickness  =convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit)/1000;
+      brickss.brickvolume =  checkIfScientific(  ( brickss.length *  brickss.width*    brickss.thickness ));
+ 
+    
 
           var motor = {};
 
@@ -1445,11 +1539,11 @@ app.post('/measurements/:measurementId/floors/:floorId/rooms/:roomId/walls/:wall
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new window to the wall
-    const newWindow = new Window(req.body);
-    wall.windows.push(newWindow);
+
+    wall.windows.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newWindow);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -1736,11 +1830,11 @@ app.post('/measurements/:measurementId/floors/:floorId/rooms/:roomId/walls/:wall
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new door to the wall
-    const newDoor = new Door(req.body);
-    wall.doors.push(newDoor);
+  //  const newDoor = new Door(req.body);
+    wall.doors.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newDoor);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -2032,11 +2126,11 @@ app.post('/measurements/:measurementId/floors/:floorId/rooms/:roomId/walls/:wall
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new lintel to the wall
-    const newLintel = new Lintel(req.body);
-    wall.lintels.push(newLintel);
+//    const newLintel = new Lintel(req.body);
+    wall.lintels.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newLintel);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

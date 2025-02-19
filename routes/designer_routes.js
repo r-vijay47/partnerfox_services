@@ -23,8 +23,8 @@ const upload = multer({ storage: storage });
 /**
  * @swagger
  * tags:
- *   name: Designer
- *   description: Designer management
+ *   name: Architech
+ *   description: Architech management
  */
  
 // Swagger Documentation for File Uploads (Dynamic category)
@@ -34,7 +34,7 @@ const upload = multer({ storage: storage });
  *   post:
  *     summary: Upload a new file for a specific category
  *     tags: 
- *       - Designer
+ *       - Architech
  *     requestBody:
  *       required: true
  *       content:
@@ -140,7 +140,7 @@ router.post('/designers/:designerId/upload/:category', upload.single('file'), as
  * /designers/{designerId}/files/{category}:
  *   get:
  *     summary: Get all files in a specific category for a designer
- *     tags: [Designer]
+ *     tags: [Architech]
  *     parameters:
  *       - name: designerId
  *         in: path
@@ -202,7 +202,7 @@ router.get('/:designerId/files/:category', async (req, res) => {
  * /designers/{designerId}/files/{category}/{fileId}:
  *   delete:
  *     summary: Delete a file by ID from a specific category for a designer
- *     tags: [ Designer ] 
+ *     tags: [ Architech ] 
  *     parameters:
  *       - name: designerId
  *         in: path
@@ -264,7 +264,7 @@ router.delete('/:designerId/files/:category/:fileId', async (req, res) => {
  * /designer/{designerId}:
  *   get:
  *     summary: Get all fields by designer ID
- *     tags: [Designer] 
+ *     tags: [Architech] 
  *     parameters:
  *       - name: designerId
  *         in: path
@@ -333,7 +333,7 @@ router.get('/designer/:designerId', async (req, res) => {
    * /designers:
    *   get:
    *     summary: Get all designers
-   *     tags: [Designer] 
+   *     tags: [Architech] 
    *     responses:
    *       200:
    *         description: List of all designers
@@ -369,7 +369,7 @@ router.get('/designer/:designerId', async (req, res) => {
  * /designers:
  *   post:
  *     summary: Create a new designer project
- *     tags: [Designer] 
+ *     tags: [Architech] 
  *     description: Adds a new designer project to the database.
  *     operationId: createDesigner
  *     requestBody:
@@ -404,7 +404,7 @@ router.post('/designers', async (req, res) => {
  * /designers:
  *   get:
  *     summary: Retrieve a list of designer projects
- *     tags: [Designer] 
+ *     tags: [Architech] 
  *     description: Fetch all designer projects from the database.
  *     operationId: getDesigners
  *     responses:
@@ -432,7 +432,7 @@ router.get('/designers', async (req, res) => {
  * /designers/{id}:
  *   get:
  *     summary: Get a designer project by ID
- *     tags: [Designer] 
+ *     tags: [Architech] 
  *     description: Fetch a designer project by its unique ID.
  *     operationId: getDesignerById
  *     parameters:
@@ -468,7 +468,7 @@ router.get('/designers/:id', async (req, res) => {
  * @swagger
  * /designer/{id}/client-confirmation:
  *   put:
- *     tags: [Designer]  
+ *     tags: [Architech]  
  *     summary: Update client confirmation status (True/False)
  *     description: Toggles the client confirmation status.
  *     parameters:
@@ -526,7 +526,7 @@ router.put('/designer/:id/client-confirmation', async (req, res) => {
  * /designers/{id}:
  *   put:
  *     summary: Update a designer project
- *     tags: [Designer]  
+ *     tags: [Architech]  
  *     description: Update an existing designer project by its ID.
  *     operationId: updateDesigner
  *     parameters:
@@ -574,7 +574,7 @@ router.put('/designers/:id', async (req, res) => {
  *     description: Delete an existing designer project by its ID.
  *     operationId: deleteDesigner
  *     tags:
- *       - Designer
+ *       - Architech
  *     parameters:
  *       - in: path
  *         name: id
@@ -603,7 +603,7 @@ router.delete('/designers/:id', async (req, res) => {
  * @swagger
  * /designer/{id}/status:
  *   put:
- *     tags: [Designer]
+ *     tags: [Architech]
  *     summary: Update the status of the designer project to "In Progress"
  *     description: Only "Project Manager" or "SPM" can change the status of the project to "In Progress"
  *     parameters:

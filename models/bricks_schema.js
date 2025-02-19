@@ -11,6 +11,12 @@ const BrickSchema = new mongoose.Schema({
     required: true,
  //   enum: ["Modular", "Non-Modular"], // Add categories if applicable
   },
+  unit: {
+    type: String,
+    enum: ['cm', 'mm', 'inches', 'feet', 'yard'],
+    required: true,
+    default: 'cm'
+  },
   dimensions: {
     length: {
       type: Number,
@@ -23,6 +29,11 @@ const BrickSchema = new mongoose.Schema({
     thickness: {
       type: Number,
       required: true,
+    },
+    wallthickness: {
+      type: Number,
+      required: false,
+      default:0
     },
   },
 }, {

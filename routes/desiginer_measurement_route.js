@@ -7,6 +7,34 @@ const vendor = require('../models/vendor_schema')
 const app = express();
 app.use(express.json());
 
+function checkIfScientific(num) {
+  // Check if the number is in scientific notation
+  if (num.toString().includes('e')) {
+      // Return the number in fixed-point notation (with a specific number of decimals, for example 10 decimals)
+      return num.toFixed(10);
+  }
+  // If it's not in scientific notation, just return the number as it is
+  return num;
+}
+
+const convertUnits = (value, fromUnit, toUnit) => {
+  const conversionRates = {
+    cm: { cm: 1, mm: 10, inches: 0.393701, feet: 0.0328084, yard: 0.0109361, meter: 0.01, kilometer: 0.00001 },
+    mm: { cm: 0.1, mm: 1, inches: 0.0393701, feet: 0.00328084, yard: 0.00109361, meter: 0.001, kilometer: 0.000001 },
+    inches: { cm: 2.54, mm: 25.4, inches: 1, feet: 0.0833333, yard: 0.0277778, meter: 0.0254, kilometer: 0.0000254 },
+    feet: { cm: 30.48, mm: 304.8, inches: 12, feet: 1, yard: 0.333333, meter: 0.3048, kilometer: 0.0003048 },
+    yard: { cm: 91.44, mm: 914.4, inches: 36, feet: 3, yard: 1, meter: 0.9144, kilometer: 0.0009144 },
+    meter: { cm: 100, mm: 1000, inches: 39.3701, feet: 3.28084, yard: 1.09361, meter: 1, kilometer: 0.001 },
+    kilometer: { cm: 100000, mm: 1000000, inches: 39370.1, feet: 3280.84, yard: 1093.61, meter: 1000, kilometer: 1 }
+  };
+
+  if (!conversionRates[fromUnit] || !conversionRates[toUnit]) {
+    throw new Error('Invalid units');
+  }
+
+  return value * conversionRates[fromUnit][toUnit];
+};
+
 /**
  * @swagger
  * tags:
@@ -45,7 +73,7 @@ app.use(express.json());
          var summary ={};
 
          var volume = {};
-
+         var wallthickness = 0;  
          var walllenght = 0;
          var wallheight = 0;  
          var motormix ={
@@ -77,66 +105,78 @@ app.use(express.json());
 
 
 
-         measurement.floors.forEach(floors => {
+     measurement.floors.forEach(floors => {
          
          
-          ///   console.log(floors.rooms);
-
-          floors.rooms.forEach(rooms => {
-
-  rooms.walls.forEach(walls => {
-    sqft = sqft + ((walls.length/304.8)*(walls.height/304.8));
-    walllenght = walllenght + walls.length;
-    wallheight = wallheight + walls.height;
-  
-  
-    walls.windows.forEach(windows => {
-    //  console.log(sqft);
-    //  console.log(windows.width);
-   //   console.log(windows.height);
-   //   console.log((windows.width/304.8)*(windows.height/304.8));
-      sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
-
-    })
-    walls.doors.forEach(doors => {
-     sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
-
-    })
-
-   // console.log(   walls);
-
-   walls.lintels.forEach(lintel => {
-     console.log(lintel);
-     sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
-
-   })
 
 
+      floors.rooms.forEach(rooms => {
 
-  });
+rooms.walls.forEach(walls => {
+console.log(walls.unit);
+sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/304.8)*(convertUnits(walls.height,walls.unit,measurement.unit)/304.8));
+
+//  console.log(sqft);
+walllenght = walllenght + walls.length;
+wallheight = wallheight + walls.height;
+wallthickness = wallthickness +walls.wallType.thickness;
+
+
+walls.windows.forEach(windows => {
+//  console.log(sqft);
+//  console.log(windows.width);
+//   console.log(windows.height);
+//   console.log((windows.width/304.8)*(windows.height/304.8));
+
+sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/304.8)*(convertUnits(windows.height,windows.unit,measurement.unit)/304.8));
+// sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
+
+// console.log("aftert windows "+sqft);
 })
-         });
+walls.doors.forEach(doors => {
+ 
+ sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/304.8)*(convertUnits(doors.height,doors.unit,measurement.unit)/304.8));
+//  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
+//  console.log("aftert doors "+sqft);
+})
+
+// console.log(   walls);
+
+walls.lintels.forEach(lintel => {
+
+  sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/304.8)*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/304.8));
+//  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
+//console.log("aftert lintels "+sqft);
+})
 
 
-         summary["sqft"]=sqft;
+
+});
+})
+     });
+
+
+     summary["sqft"]=sqft;
             
-         volume["length"] = walllenght/1000;
-         volume["depth"] = wallheight/1000;
-         volume["wallthickness"] = 100/1000;
-          var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
+     volume["length"] = walllenght/1000;
+     volume["depth"] = wallheight/1000;
+     volume["wallthickness"] = wallthickness/1000;
+      var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
 
 
-          var bricks =await Bricks.findOne();
-          console.log(bricks);
-          var brickss  = {};
+      var bricks =await Bricks.findOne();
 
-          console.log(brickss);
-          brickss.length = (bricks.dimensions.length/1000);
-          brickss.width = bricks.dimensions.width/1000;
-          brickss.thickness = bricks.dimensions.thickness/1000;
-          brickss.brickvolume = ((bricks.dimensions.length/1000 )* (bricks.dimensions.width/1000) *( bricks.dimensions.thickness/1000));
-          console.log(brickss);
+      var brickss  = {};
 
+   
+   //   console.log(bricks)
+      console.log( convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit))
+      brickss.length = (convertUnits(bricks.dimensions.length,bricks.unit,measurement.unit)/1000);
+      brickss.width = convertUnits(bricks.dimensions.width,bricks.unit,measurement.unit)/1000;
+      brickss.thickness  =convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit)/1000;
+      brickss.brickvolume =  checkIfScientific(  ( brickss.length *  brickss.width*    brickss.thickness ));
+ 
+    
 
           var motor = {};
 
@@ -251,7 +291,7 @@ vendor.price = [];
 /**
  * @swagger
  * tags:
- *   - name: Architect Measurements
+ *   - name: Designer Measurements
  *     description: API for managing project measurements
  */
 
@@ -260,13 +300,13 @@ vendor.price = [];
  * /designinermeasurements:
  *   post:
  *     summary: Create a new measurement record
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Measurement'
+ *             $ref: '#/components/schemas/Measurements'
  *     responses:
  *       201:
  *         description: Measurement record created successfully
@@ -289,7 +329,7 @@ app.post('/designinermeasurements', async (req, res) => {
    *  /ddesigninermeasurements:
    *   get:
    *     summary: Get all measurements
-   *     tags: [Architect Measurements]
+   *     tags: [Designer Measurements]
    *     responses:
    *       200:
    *         description: List of all measurements
@@ -298,7 +338,7 @@ app.post('/designinermeasurements', async (req, res) => {
    *             schema:
    *               type: array
    *               items:
-   *                 $ref: '#/components/schemas/Measurement'
+   *                 $ref: '#/components/schemas/Measurements'
    *       500:
    *         description: Internal server error
    */
@@ -317,7 +357,7 @@ app.post('/designinermeasurements', async (req, res) => {
    * /designinermeasurements/{id}:
    *   get:
    *     summary: Get a measurement by ID
-   *     tags: [Architect Measurements]
+   *     tags: [Designer Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -347,6 +387,7 @@ app.post('/designinermeasurements', async (req, res) => {
 
          var walllenght = 0;
          var wallheight = 0;  
+         var wallthickness = 0;  
          var motormix ={
           cement : 1,
           sand:4,
@@ -379,14 +420,18 @@ app.post('/designinermeasurements', async (req, res) => {
          measurement.floors.forEach(floors => {
          
          
-          ///   console.log(floors.rooms);
+
 
           floors.rooms.forEach(rooms => {
 
   rooms.walls.forEach(walls => {
-    sqft = sqft + ((walls.length/304.8)*(walls.height/304.8));
+    console.log(walls.unit);
+    sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/304.8)*(convertUnits(walls.height,walls.unit,measurement.unit)/304.8));
+
+  //  console.log(sqft);
     walllenght = walllenght + walls.length;
     wallheight = wallheight + walls.height;
+    wallthickness = wallthickness +walls.wallType.thickness;
   
   
     walls.windows.forEach(windows => {
@@ -394,20 +439,26 @@ app.post('/designinermeasurements', async (req, res) => {
     //  console.log(windows.width);
    //   console.log(windows.height);
    //   console.log((windows.width/304.8)*(windows.height/304.8));
-      sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
+   
+   sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/304.8)*(convertUnits(windows.height,windows.unit,measurement.unit)/304.8));
+  // sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
 
+ // console.log("aftert windows "+sqft);
     })
     walls.doors.forEach(doors => {
-     sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
-
+     
+     sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/304.8)*(convertUnits(doors.height,doors.unit,measurement.unit)/304.8));
+    //  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
+  //  console.log("aftert doors "+sqft);
     })
 
    // console.log(   walls);
 
    walls.lintels.forEach(lintel => {
-     console.log(lintel);
-     sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
 
+      sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/304.8)*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/304.8));
+   //  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
+   //console.log("aftert lintels "+sqft);
    })
 
 
@@ -421,20 +472,24 @@ app.post('/designinermeasurements', async (req, res) => {
             
          volume["length"] = walllenght/1000;
          volume["depth"] = wallheight/1000;
-         volume["wallthickness"] = 100/1000;
+         volume["wallthickness"] = wallthickness/1000;
           var m3 =  volume["length"] * volume["depth"] * volume["wallthickness"];
 
 
           var bricks =await Bricks.findOne();
-          console.log(bricks);
+    
           var brickss  = {};
 
-          console.log(brickss);
-          brickss.length = (bricks.dimensions.length/1000);
-          brickss.width = bricks.dimensions.width/1000;
-          brickss.thickness = bricks.dimensions.thickness/1000;
-          brickss.brickvolume = ((bricks.dimensions.length/1000 )* (bricks.dimensions.width/1000) *( bricks.dimensions.thickness/1000));
-          console.log(brickss);
+       
+       //   console.log(bricks)
+          console.log( convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit))
+          brickss.length = (convertUnits(bricks.dimensions.length,bricks.unit,measurement.unit)/1000);
+          brickss.width = convertUnits(bricks.dimensions.width,bricks.unit,measurement.unit)/1000;
+          brickss.thickness  =convertUnits(bricks.dimensions.thickness,bricks.unit,measurement.unit)/1000;
+          brickss.brickvolume =  checkIfScientific(  ( brickss.length *  brickss.width*    brickss.thickness ));
+     
+        
+        //  console.log(brickss.brickvolume.toFixed(16));
 
 
           var motor = {};
@@ -493,7 +548,7 @@ app.post('/designinermeasurements', async (req, res) => {
    * /designinermeasurements/{id}:
    *   put:
    *     summary: Update a measurement by ID
-   *     tags: [Architect Measurements]
+   *     tags: [Designer Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -507,7 +562,7 @@ app.post('/designinermeasurements', async (req, res) => {
    *       content:
    *         application/json:
    *           schema:
-   *             $ref: '#/components/schemas/Measurement'
+   *             $ref: '#/components/schemas/Measurements'
    *     responses:
    *       200:
    *         description: Measurement updated successfully
@@ -531,7 +586,7 @@ app.post('/designinermeasurements', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors:
  *   post:
  *     summary: Add a floor to a measurement by measurementId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -575,7 +630,7 @@ app.post('/designinermeasurements/:measurementId/floors', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors:
  *   get:
  *     summary: Get all floors of a measurement by measurementId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -607,7 +662,7 @@ app.get('/designinermeasurements/:measurementId/floors', async (req, res) => {
  * /designinermeasurements/{measurementId}/floors/{floorId}:
  *   put:
  *     summary: Update a floor in a measurement by measurementId and floorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -660,7 +715,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId', async (req, re
  * /designinermeasurements/{measurementId}/floors/{floorId}:
  *   delete:
  *     summary: Delete a floor from a measurement by measurementId and floorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -706,7 +761,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId', async (req,
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms:
  *   post:
  *     summary: Add a room to a floor under a measurement by measurementId and floorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -760,7 +815,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms', async (
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms:
  *   get:
  *     summary: Get all rooms in a floor of a measurement by measurementId and floorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -804,7 +859,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms', async (r
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}:
  *   put:
  *     summary: Update a room in a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -868,7 +923,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId', 
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}:
  *   delete:
  *     summary: Delete a room from a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -924,7 +979,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls:
  *   post:
  *     summary: Add a wall to a room in a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -988,7 +1043,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls:
  *   get:
  *     summary: Get all walls in a room of a floor under a measurement by measurementId, floorId, and roomId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1039,7 +1094,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}:
  *   put:
  *     summary: Update a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1112,7 +1167,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}:
  *   delete:
  *     summary: Delete a wall from a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1178,7 +1233,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   post:
  *     summary: Add a customization to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1252,7 +1307,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   get:
  *     summary: Get all customizations for a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1313,7 +1368,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations:
  *   get:
  *     summary: Get all customizations for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1375,7 +1430,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations/{customizationId}:
  *   put:
  *     summary: Update a wall customization by measurementId, floorId, roomId, wallId, and customizationId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1457,7 +1512,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/customizations/{customizationId}:
  *   delete:
  *     summary: Delete a wall customization by measurementId, floorId, roomId, wallId, and customizationId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1534,7 +1589,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
    * /designinermeasurements/{id}:
    *   delete:
    *     summary: Delete a measurement by ID
-   *     tags: [Architect Measurements]
+   *     tags: [Designer Measurements]
    *     parameters:
    *       - in: path
    *         name: id
@@ -1566,7 +1621,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows:
  *   get:
  *     summary: Get all windows for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1627,7 +1682,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows:
  *   post:
  *     summary: Add a window to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1686,11 +1741,11 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new window to the wall
-    const newWindow = new Window(req.body);
-    wall.windows.push(newWindow);
+   // const newWindow = new Window(req.body);
+    wall.windows.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newWindow);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -1701,7 +1756,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows/{windowId}:
  *   put:
  *     summary: Update a window in a wall under a room and floor by measurementId, floorId, roomId, wallId, and windowId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1782,7 +1837,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/windows/{windowId}:
  *   delete:
  *     summary: Delete a window from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and windowId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1857,7 +1912,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors:
  *   get:
  *     summary: Get all doors for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1918,7 +1973,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors:
  *   post:
  *     summary: Add a door to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -1977,11 +2032,11 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new door to the wall
-    const newDoor = new Door(req.body);
-    wall.doors.push(newDoor);
+  //  const newDoor = new Door(req.body);
+    wall.doors.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newDoor);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -1993,7 +2048,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors/{doorId}:
  *   put:
  *     summary: Update a door in a wall under a room and floor by measurementId, floorId, roomId, wallId, and doorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2075,7 +2130,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/doors/{doorId}:
  *   delete:
  *     summary: Delete a door from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and doorId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2152,7 +2207,7 @@ app.delete('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels:
  *   get:
  *     summary: Get all lintels for a specific wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2214,7 +2269,7 @@ app.get('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels:
  *   post:
  *     summary: Add a lintel to a wall in a room under a floor by measurementId, floorId, roomId, and wallId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2273,11 +2328,11 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
     if (!wall) return res.status(404).json({ message: 'Wall not found' });
 
     // Add new lintel to the wall
-    const newLintel = new Lintel(req.body);
-    wall.lintels.push(newLintel);
+  //  const newLintel = new Lintel(req.body);
+    wall.lintels.push(req.body);
     await measurement.save();
 
-    res.status(201).json(newLintel);
+    res.status(201).json(measurement);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -2289,7 +2344,7 @@ app.post('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/w
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels/{lintelId}:
  *   put:
  *     summary: Update a lintel in a wall under a room and floor by measurementId, floorId, roomId, wallId, and lintelId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
@@ -2371,7 +2426,7 @@ app.put('/designinermeasurements/:measurementId/floors/:floorId/rooms/:roomId/wa
  * /designinermeasurements/{measurementId}/floors/{floorId}/rooms/{roomId}/walls/{wallId}/lintels/{lintelId}:
  *   delete:
  *     summary: Delete a lintel from a wall in a room under a floor by measurementId, floorId, roomId, wallId, and lintelId
- *     tags: [Architect Measurements]
+ *     tags: [Designer Measurements]
  *     parameters:
  *       - in: path
  *         name: measurementId
