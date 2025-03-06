@@ -35,6 +35,27 @@ const convertUnits = (value, fromUnit, toUnit) => {
   return value * conversionRates[fromUnit][toUnit];
 };
 
+const getUnitConversion = (unit) => {
+  const unitValues = {
+    feet: 1,         // 1 foot is returned as 1
+    mm: 304.8,       // for mm, return 304.8 as per your example
+    cm: 30.48,       // you can define other conversions here
+    inches: 12,      // for inches, return 12 (if needed)
+    yard: 3,         // 1 yard is 3 feet
+    meter: 0.3048,   // 1 meter is 0.3048 feet
+    kilometer: 3280.84 // 1 kilometer is 3280.84 feet
+  };
+
+  // Check if the unit exists in the unitValues object
+  if (unitValues[unit] !== undefined) {
+    return unitValues[unit];
+  } else {
+    throw new Error('Invalid unit');
+  }
+};
+
+// Example: Convert from square centimeters (cm^2) to square feet (ft^2)
+console.log(getUnitConversion('cm',)); 
 /**
  * @swagger
  * tags:
@@ -114,7 +135,7 @@ const convertUnits = (value, fromUnit, toUnit) => {
 
 rooms.walls.forEach(walls => {
 console.log(walls.unit);
-sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/304.8)*(convertUnits(walls.height,walls.unit,measurement.unit)/304.8));
+sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(walls.height,walls.unit,measurement.unit)/getUnitConversion(measurement.unit)));
 
 //  console.log(sqft);
 walllenght = walllenght + walls.length;
@@ -128,14 +149,14 @@ walls.windows.forEach(windows => {
 //   console.log(windows.height);
 //   console.log((windows.width/304.8)*(windows.height/304.8));
 
-sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/304.8)*(convertUnits(windows.height,windows.unit,measurement.unit)/304.8));
+sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(windows.height,windows.unit,measurement.unit)/getUnitConversion(measurement.unit)));
 // sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
 
 // console.log("aftert windows "+sqft);
 })
 walls.doors.forEach(doors => {
  
- sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/304.8)*(convertUnits(doors.height,doors.unit,measurement.unit)/304.8));
+ sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(doors.height,doors.unit,measurement.unit)/getUnitConversion(measurement.unit)));
 //  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
 //  console.log("aftert doors "+sqft);
 })
@@ -144,7 +165,7 @@ walls.doors.forEach(doors => {
 
 walls.lintels.forEach(lintel => {
 
-  sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/304.8)*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/304.8));
+  sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/getUnitConversion(measurement.unit)));
 //  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
 //console.log("aftert lintels "+sqft);
 })
@@ -417,55 +438,55 @@ app.post('/designinermeasurements', async (req, res) => {
 
 
 
-         measurement.floors.forEach(floors => {
+     measurement.floors.forEach(floors => {
          
          
 
 
-          floors.rooms.forEach(rooms => {
+      floors.rooms.forEach(rooms => {
 
-  rooms.walls.forEach(walls => {
-    console.log(walls.unit);
-    sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/304.8)*(convertUnits(walls.height,walls.unit,measurement.unit)/304.8));
+rooms.walls.forEach(walls => {
+console.log(walls.unit);
+sqft = sqft + ((convertUnits(walls.length,walls.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(walls.height,walls.unit,measurement.unit)/getUnitConversion(measurement.unit)));
 
-  //  console.log(sqft);
-    walllenght = walllenght + walls.length;
-    wallheight = wallheight + walls.height;
-    wallthickness = wallthickness +walls.wallType.thickness;
-  
-  
-    walls.windows.forEach(windows => {
-    //  console.log(sqft);
-    //  console.log(windows.width);
-   //   console.log(windows.height);
-   //   console.log((windows.width/304.8)*(windows.height/304.8));
-   
-   sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/304.8)*(convertUnits(windows.height,windows.unit,measurement.unit)/304.8));
-  // sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
-
- // console.log("aftert windows "+sqft);
-    })
-    walls.doors.forEach(doors => {
-     
-     sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/304.8)*(convertUnits(doors.height,doors.unit,measurement.unit)/304.8));
-    //  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
-  //  console.log("aftert doors "+sqft);
-    })
-
-   // console.log(   walls);
-
-   walls.lintels.forEach(lintel => {
-
-      sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/304.8)*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/304.8));
-   //  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
-   //console.log("aftert lintels "+sqft);
-   })
+//  console.log(sqft);
+walllenght = walllenght + walls.length;
+wallheight = wallheight + walls.height;
+wallthickness = wallthickness +walls.wallType.thickness;
 
 
+walls.windows.forEach(windows => {
+//  console.log(sqft);
+//  console.log(windows.width);
+//   console.log(windows.height);
+//   console.log((windows.width/304.8)*(windows.height/304.8));
 
-  });
+sqft = sqft - ((convertUnits(windows.width,windows.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(windows.height,windows.unit,measurement.unit)/getUnitConversion(measurement.unit)));
+// sqft = sqft - ((windows.width/304.8)*(windows.height/304.8));
+
+// console.log("aftert windows "+sqft);
 })
-         });
+walls.doors.forEach(doors => {
+ 
+ sqft = sqft - ((convertUnits(doors.length,doors.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(doors.height,doors.unit,measurement.unit)/getUnitConversion(measurement.unit)));
+//  sqft = sqft - ((doors.length/304.8)*(doors.height/304.8));
+//  console.log("aftert doors "+sqft);
+})
+
+// console.log(   walls);
+
+walls.lintels.forEach(lintel => {
+
+  sqft = sqft - ((convertUnits(lintel.width,lintel.unit,measurement.unit)/getUnitConversion(measurement.unit))*(convertUnits(lintel.thickness,lintel.unit,measurement.unit)/getUnitConversion(measurement.unit)));
+//  sqft = sqft - ((lintel.width/304.8)*(lintel.thickness/304.8));
+//console.log("aftert lintels "+sqft);
+})
+
+
+
+});
+})
+     });
 
 
          summary["sqft"]=sqft;

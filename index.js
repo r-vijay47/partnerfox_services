@@ -58,7 +58,7 @@ app.use("/api", verndor_category);
 //app.use("/api/", measurementRoutes);
 //app.use("/api/", floorRoutes);
 
-   app.use("/api", userRoutes);
+app.use("/api", userRoutes);
 app.use('/api',roles)
 
 app.get('/', (req, res) => res.send('Hello World!'))

@@ -79,7 +79,7 @@ router.post("/projects", async (req, res) => {
  */
 router.get("/projects", async (req, res) => {
   try {
-    const projects = await Project.find().populate("lead quotation projectmanager desiginerorarchiteck spg measurement createdBy");
+    const projects = await Project.find().populate("lead quotation projectmanager desiginerorarchiteck spg measurement createdBy spm");
     res.status(200).json(projects);
   } catch (error) {
     res.status(500).json({ error: error.message });
